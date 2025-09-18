@@ -67,25 +67,33 @@ export default function InvoiceViewer({ invoice, onClose, onEdit, onDownload, on
       return;
     }
 
-    const options = {
-      margin: [5, 5, 5, 5],
-      filename: `Facture_${invoice.number}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: 794,
-        height: 1124
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait'
-      }
-    };
+
+
+
+const options = {
+  margin: [5, 5, 5, 5],
+  filename: `Facture_${invoice.number}.pdf`,
+  image: { type: 'jpeg', quality: 0.98 },
+  html2canvas: {
+    scale: 2,
+    useCORS: true,
+    allowTaint: false,
+    logging: false,
+    backgroundColor: '#ffffff'
+    // ❌ remove width/height to allow natural multi-page flow
+  },
+  jsPDF: {
+    unit: 'mm',
+    format: 'a4',
+    orientation: 'portrait'
+  },
+  pagebreak: {
+    mode: ['css'] // honors .html2pdf__page-break and avoid rules
+  }
+};
+
+
+    
 
     html2pdf()
       .set(options)
