@@ -1,89 +1,69 @@
+/* ================================
+   Tailwind (si ton projet l’utilise)
+   ================================ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Transitions globales pour le mode sombre */
-* {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+/* ================================
+   Reset & bases
+   ================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-/* Amélioration des placeholders en mode sombre */
-.dark input::placeholder,
-.dark textarea::placeholder,
-.dark select::placeholder {
-  color: #9CA3AF;
+html, body, #root {
+  height: 100%;
 }
 
-/* Focus states améliorés pour le mode sombre */
-.dark input:focus,
-.dark textarea:focus,
-.dark select:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f5f5f5;
+  color: #111;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbars en mode sombre */
-.dark ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Liens & images */
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: inline-block; }
+
+/* Tables basiques (utile si pas de Tailwind dans le PDF) */
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 6px 8px; }
+
+/* ================================
+   LAYOUT PDF A4 AVEC HEADER/FOOTER FIXES
+   ================================ */
+
+/* Taille A4 à ~96 dpi + hauteurs header/footer.
+   Si tu modifies les hauteurs, ajuste aussi .pdf-content (top/bottom). */
+:root {
+  --a4-w: 794px;   /* ~210 mm @ 96dpi */
+  --a4-h: 1123px;  /* ~297 mm @ 96dpi */
+  --hdr-h: 120px;  /* hauteur du header */
+  --ftr-h: 90px;   /* hauteur du footer */
 }
 
-.dark ::-webkit-scrollbar-track {
-  background: #374151;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #6B7280;
-  border-radius: 4px;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
-}
-
-/* Animation pour les tooltips */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
-}
-
-/* Amélioration des tooltips */
-.tooltip-arrow::before {
-  content: '';
-  position: absolute;
-  top: -5px;
-  left: 20px;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 5px solid white;
-}
-
-.dark .tooltip-arrow::before {
-  border-bottom-color: #374151;
-}
-
-/* ==== PDF helpers (A4 portrait) ==== */
+/* Chaque .pdf-page = UNE page PDF */
 .pdf-page {
-  width: 794px;           /* A4 CSS px at 96dpi (~210mm) */
-  min-height: 1123px;     /* A4 height (~297mm) */
-  position: relative;     /* for absolute header/footer */
+  width: var(--a4-w);
+  height: var(--a4-h);     /* hauteur FIXE -> empêche les débordements */
+  position: relative;
   background: #ffffff;
-  border: 1px solid #000; /* keep your border */
+  border: 1px solid #000;  /* garde ton cadre noir */
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
+  page-break-after: always; /* force un saut APRÈS chaque page */
 }
 
-/* pinned header/footer inside each page container */
+.pdf-page:last-child {
+  page-break-after: auto;   /* pas de saut après la dernière */
+}
+
+/* HEADER & FOOTER épinglés */
 .pdf-header,
 .pdf-footer {
   position: absolute;
@@ -91,30 +71,101 @@
   right: 0;
 }
 
-.pdf-header { top: 0; }
-.pdf-footer { bottom: 0; }
-
-/* space for header/footer in the flow area */
-.pdf-content {
-  margin-top: 140px;     /* header height */
-  margin-bottom: 120px;  /* footer height */
-  padding: 24px;
+.pdf-header {
+  top: 0;
+  height: var(--hdr-h);
 }
 
-/* Avoid breaking inside elements that must stay together */
+.pdf-footer {
+  bottom: 0;
+  height: var(--ftr-h);
+}
+
+/* Zone de contenu entre header et footer (BORNEE) */
+.pdf-content {
+  position: absolute;
+  top: var(--hdr-h);
+  bottom: var(--ftr-h);
+  left: 0;
+  right: 0;
+  padding: 24px;
+  overflow: hidden; /* empêche tout dépassement sur la page */
+}
+
+/* Évite les coupures internes de blocs importants (totaux, signatures…) */
 .pdf-avoid-break {
   page-break-inside: avoid;
   break-inside: avoid;
 }
 
-/* Force a new PDF page before the element */
-.html2pdf__page-break {
-  page-break-before: always;
-  break-before: page;
+/* IMPORTANT : on N’UTILISE PAS .html2pdf__page-break
+   car chaque .pdf-page est déjà une page distincte. */
+
+/* ================================
+   Styles utiles pour l’aperçu écran
+   ================================ */
+.preview-wrapper {
+  background: #e9ecef;
+  padding: 16px;
 }
 
-/* Print-specific tweaks */
+/* En-tête noir “COMAGAL ENERGY” (si tu ne relies pas tout à Tailwind) */
+.header-bar {
+  background: #000;
+  color: #fff;
+  border-bottom: 1px solid #000;
+  padding: 24px 32px;
+}
+
+/* Pied de page noir */
+.footer-bar {
+  background: #000;
+  color: #fff;
+  border-top: 2px solid #fff;
+  padding: 12px 16px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Table style (si non gérée par Tailwind dans le HTML) */
+.table {
+  width: 100%;
+  border: 1px solid #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.table thead th {
+  background: #000;
+  color: #fff;
+  font-weight: 700;
+  border-right: 1px solid #fff;
+  text-align: center;
+  font-size: 13px;
+  padding: 10px 8px;
+}
+.table thead th:last-child { border-right: none; }
+.table tbody td {
+  border-top: 1px solid #000;
+  border-right: 1px solid #000;
+  text-align: center;
+  font-size: 12px;
+  padding: 8px 6px;
+}
+.table tbody td:last-child { border-right: none; }
+
+/* ================================
+   Impression
+   ================================ */
 @media print {
+  html, body {
+    background: #ffffff !important;
+  }
+  /* Supprime les marges du navigateur, on gère nos pages nous-mêmes */
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  /* S’assure que chaque conteneur page tient seul sur une page imprimée */
   .pdf-page {
     break-after: page;
   }
