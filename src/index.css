@@ -70,3 +70,52 @@
 .dark .tooltip-arrow::before {
   border-bottom-color: #374151;
 }
+
+/* ==== PDF helpers (A4 portrait) ==== */
+.pdf-page {
+  width: 794px;           /* A4 CSS px at 96dpi (~210mm) */
+  min-height: 1123px;     /* A4 height (~297mm) */
+  position: relative;     /* for absolute header/footer */
+  background: #ffffff;
+  border: 1px solid #000; /* keep your border */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* pinned header/footer inside each page container */
+.pdf-header,
+.pdf-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.pdf-header { top: 0; }
+.pdf-footer { bottom: 0; }
+
+/* space for header/footer in the flow area */
+.pdf-content {
+  margin-top: 140px;     /* header height */
+  margin-bottom: 120px;  /* footer height */
+  padding: 24px;
+}
+
+/* Avoid breaking inside elements that must stay together */
+.pdf-avoid-break {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Force a new PDF page before the element */
+.html2pdf__page-break {
+  page-break-before: always;
+  break-before: page;
+}
+
+/* Print-specific tweaks */
+@media print {
+  .pdf-page {
+    break-after: page;
+  }
+}
