@@ -49,7 +49,7 @@ export default function InvoiceViewer({ invoice, onClose, onEdit, onDownload, on
       setShowProModal(true);
       return;
     }
-    generatePDFWithTemplate();
+    void generatePDFWithTemplate();
   };
 
   const handleDownloadPDF = () => {
@@ -57,13 +57,19 @@ export default function InvoiceViewer({ invoice, onClose, onEdit, onDownload, on
       setShowProModal(true);
       return;
     }
-    generatePDFWithTemplate();
+    void generatePDFWithTemplate();
   };
 
-  const generatePDFWithTemplate = () => {
+  const generatePDFWithTemplate = async () => {
     const invoiceContent = document.getElementById('invoice-content');
     if (!invoiceContent) {
       alert('Erreur: Contenu de la facture non trouvé');
+      return;
+    }
+
+    const templateRoot = invoiceContent.firstElementChild as HTMLElement | null;
+    if (!templateRoot) {
+      alert('Erreur: Modèle de facture introuvable');
       return;
     }
 
@@ -84,17 +90,215 @@ export default function InvoiceViewer({ invoice, onClose, onEdit, onDownload, on
         unit: 'mm',
         format: 'a4',
         orientation: 'portrait'
+      },
+      pagebreak: { mode: ['css', 'legacy'] as const }
+    };
+
+    const buildPdfWrapper = (extraBuffer = 0) => {
+      const itemsSection = templateRoot.querySelector('[data-invoice-section="items"]') as HTMLElement | null;
+      if (!itemsSection) {
+        throw new Error('Section des articles introuvable pour le modèle sélectionné.');
+      }
+
+      const footerSection = templateRoot.querySelector('[data-invoice-section="footer"]') as HTMLElement | null;
+      const totalsSection = templateRoot.querySelector('[data-invoice-section="totals"]') as HTMLElement | null;
+      const signatureSection = templateRoot.querySelector('[data-invoice-section="signature"]') as HTMLElement | null;
+
+      const invoiceRect = templateRoot.getBoundingClientRect();
+      const itemsRect = itemsSection.getBoundingClientRect();
+      const footerRect = footerSection?.getBoundingClientRect();
+
+      const tableHeader = itemsSection.querySelector('thead') as HTMLElement | null;
+      const tableHeaderHeight = tableHeader ? tableHeader.getBoundingClientRect().height : 0;
+
+      const totalsHeight = totalsSection ? totalsSection.getBoundingClientRect().height : 0;
+      const signatureHeight = signatureSection ? signatureSection.getBoundingClientRect().height : 0;
+
+      const pageWidth = invoiceRect.width;
+      const pageHeight = invoiceRect.height;
+
+      const rowElements = Array.from(itemsSection.querySelectorAll('tbody tr')) as HTMLTableRowElement[];
+      const rowHeights = rowElements.map((row) => row.getBoundingClientRect().height);
+      const minimumRowHeight = rowHeights.length ? Math.min(...rowHeights) : 80;
+
+      const headerHeight = itemsRect.top - invoiceRect.top;
+      const footerHeight = footerRect ? invoiceRect.bottom - footerRect.top : 0;
+
+      const bodyAvailable = pageHeight - headerHeight - footerHeight - extraBuffer;
+      const rawStandardCapacity = bodyAvailable - tableHeaderHeight;
+      const standardCapacity = rawStandardCapacity > 0 ? rawStandardCapacity : minimumRowHeight;
+      let lastPageCapacity = bodyAvailable - tableHeaderHeight - totalsHeight - signatureHeight;
+      if (lastPageCapacity < 0) {
+        lastPageCapacity = 0;
+      }
+      if (lastPageCapacity > standardCapacity) {
+        lastPageCapacity = standardCapacity;
+      }
+
+      const pages: number[][] = [];
+
+      if (!rowHeights.length) {
+        pages.push([]);
+      } else {
+        let currentRows: number[] = [];
+        let currentHeight = 0;
+
+        rowHeights.forEach((height, index) => {
+          if (!currentRows.length) {
+            currentRows.push(index);
+            currentHeight = height;
+            return;
+          }
+
+          if (currentHeight + height <= standardCapacity) {
+            currentRows.push(index);
+            currentHeight += height;
+          } else {
+            pages.push(currentRows);
+            currentRows = [index];
+            currentHeight = height;
+          }
+        });
+
+        if (currentRows.length) {
+          pages.push(currentRows);
+        }
+      }
+
+      if (!pages.length) {
+        pages.push([]);
+      }
+
+      const sumHeight = (rows: number[]) => rows.reduce((total, idx) => total + (rowHeights[idx] || 0), 0);
+
+      if (rowHeights.length && pages.length) {
+        if (lastPageCapacity <= 0) {
+          const finalRows = pages[pages.length - 1];
+          if (finalRows.length) {
+            const movedRows = finalRows.splice(0, finalRows.length);
+            if (pages.length === 1) {
+              pages.splice(0, 0, movedRows);
+            } else {
+              pages.splice(pages.length - 1, 0, movedRows);
+            }
+          }
+        } else {
+          let safety = 0;
+          while (sumHeight(pages[pages.length - 1]) > lastPageCapacity && pages[pages.length - 1].length > 1 && safety < 50) {
+            const finalIndex = pages.length - 1;
+            const finalRows = pages[finalIndex];
+            const overflowRows: number[] = [];
+
+            while (finalRows.length > 1 && sumHeight(finalRows) > lastPageCapacity) {
+              const moved = finalRows.shift();
+              if (typeof moved === 'number') {
+                overflowRows.push(moved);
+              }
+            }
+
+            if (!overflowRows.length) {
+              break;
+            }
+
+            pages.splice(finalIndex, 0, overflowRows);
+            safety += 1;
+          }
+        }
+      }
+
+      const structuredPages = pages.length ? pages : [[]];
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'invoice-pdf-wrapper';
+      wrapper.style.position = 'fixed';
+      wrapper.style.top = '0';
+      wrapper.style.left = '-10000px';
+      wrapper.style.width = `${pageWidth}px`;
+      wrapper.style.pointerEvents = 'none';
+      wrapper.style.opacity = '0';
+      wrapper.style.zIndex = '-1';
+
+      structuredPages.forEach((rowIndexes, index) => {
+        const pageClone = templateRoot.cloneNode(true) as HTMLElement;
+        pageClone.classList.add('invoice-page');
+        pageClone.style.width = `${pageWidth}px`;
+        pageClone.style.maxWidth = `${pageWidth}px`;
+        pageClone.style.minHeight = `${pageHeight}px`;
+        pageClone.style.boxSizing = 'border-box';
+        pageClone.style.margin = '0 auto';
+        pageClone.style.display = 'flex';
+        pageClone.style.flexDirection = 'column';
+
+        if (index < structuredPages.length - 1) {
+          pageClone.setAttribute('data-html2pdf-pagebreak', 'after');
+          pageClone.style.pageBreakAfter = 'always';
+          (pageClone.style as CSSStyleDeclaration).breakAfter = 'page';
+        } else {
+          pageClone.setAttribute('data-html2pdf-pagebreak', 'avoid');
+          pageClone.style.pageBreakAfter = 'avoid';
+          (pageClone.style as CSSStyleDeclaration).breakAfter = 'auto';
+        }
+
+        const itemsClone = pageClone.querySelector('[data-invoice-section="items"]');
+        if (itemsClone) {
+          const rowSet = new Set(rowIndexes);
+          const clonedRows = Array.from(itemsClone.querySelectorAll('tbody tr'));
+          clonedRows.forEach((row, idx) => {
+            if (!rowSet.has(idx)) {
+              row.remove();
+            }
+          });
+        }
+
+        if (index !== structuredPages.length - 1) {
+          pageClone.querySelectorAll('[data-invoice-section="totals"]').forEach((node) => node.remove());
+          pageClone.querySelectorAll('[data-invoice-section="signature"]').forEach((node) => node.remove());
+        }
+
+        wrapper.appendChild(pageClone);
+      });
+
+      return { wrapper, pageCount: structuredPages.length || 1 };
+    };
+
+    const maxAttempts = 4;
+
+    const generateWithBuffer = async (buffer = 0, attempt = 1): Promise<void> => {
+      const { wrapper, pageCount } = buildPdfWrapper(buffer);
+      document.body.appendChild(wrapper);
+
+      const worker = html2pdf().set(options).from(wrapper).toPdf();
+
+      try {
+        const pdfInstance = await worker.get('pdf');
+        const generatedPages = pdfInstance.internal.getNumberOfPages();
+
+        if (generatedPages !== pageCount && attempt < maxAttempts) {
+          const nextBuffer = buffer + 20;
+          console.warn(`Ajustement du découpage PDF (tentative ${attempt})`, {
+            attendu: pageCount,
+            genere: generatedPages,
+            margeSupplementaire: nextBuffer
+          });
+          return generateWithBuffer(nextBuffer, attempt + 1);
+        }
+
+        if (generatedPages !== pageCount) {
+          console.warn(`Nombre de pages attendu (${pageCount}) différent du PDF généré (${generatedPages}).`);
+        }
+
+        await worker.save();
+      } finally {
+        wrapper.remove();
       }
     };
 
-    html2pdf()
-      .set(options)
-      .from(invoiceContent)
-      .save()
-      .catch((error) => {
-        console.error('Erreur lors de la génération du PDF:', error);
-        alert('Erreur lors de la génération du PDF');
-      });
+    try {
+      await generateWithBuffer();
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Erreur lors de la génération du PDF');
+    }
   };
 
   return (

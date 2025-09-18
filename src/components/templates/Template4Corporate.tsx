@@ -95,7 +95,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
         </div>
 
         {/* TABLE PRODUITS */}
-        <div className="p-8 border-b border-[#24445C]">
+        <div className="p-8 border-b border-[#24445C]" data-invoice-section="items">
           <table className="w-full border border-[#24445C] rounded">
             <thead className="bg-[#24445C] text-white text-sm">
               <tr>
@@ -123,7 +123,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
         </div>
 
         {/* TOTALS */}
-        <div className="p-8">
+        <div className="p-8" data-invoice-section="totals">
           <div className="flex justify-between">
             <div className="w-80 bg-gray-50 rounded border border-[#24445C] p-4">
               <div className="text-sm font-bold pt-3 text-center text-[#24445C] pb-4">
@@ -181,7 +181,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
 
        
         {/* SIGNATURE */}
-        <div className="p-6">
+        <div className="p-6" data-invoice-section="signature">
           <div className="flex justify-start">
             <div className="w-60 bg-gray-50 border border-black rounded p-4 text-center">
               <div className="text-sm font-bold mb-3">Signature</div>
@@ -204,7 +204,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
         </div>
 
         {/* FOOTER (toujours en bas) */}
-        <div className="mt-auto relative bg-[#24445C] text-white">
+        <div className="mt-auto relative bg-[#24445C] text-white" data-invoice-section="footer">
           <svg
             className="absolute top-0 left-0 w-full h-10"
             viewBox="0 0 1440 120"
