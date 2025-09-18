@@ -84,7 +84,7 @@ export default function Template3Minimal({ data, type, includeSignature = false 
         </div>
 
         {/* TABLE PRODUITS */}
-        <div className="p-8 border-b border-[#0a1f44]">
+        <div className="p-8 border-b border-[#0a1f44]" data-invoice-section="items">
           <table className="w-full border border-[#0a1f44] rounded overflow-hidden">
             <thead className="bg-[#0a1f44] text-white text-sm">
               <tr>
@@ -110,7 +110,7 @@ export default function Template3Minimal({ data, type, includeSignature = false 
         </div>
 
         {/* BLOCS TOTAUX */}
-        <div className="p-8">
+        <div className="p-8" data-invoice-section="totals">
           <div className="flex justify-between">
             {/* Bloc gauche */}
             <div className="w-80 bg-white rounded border border-[#0a1f44] p-4 shadow-sm">
@@ -170,7 +170,7 @@ export default function Template3Minimal({ data, type, includeSignature = false 
 
       
         {/* SIGNATURE */}
-        <div className="p-6">
+        <div className="p-6" data-invoice-section="signature">
           <div className="flex justify-start">
             <div className="w-60 bg-gray-50 border border-black rounded p-4 text-center">
               <div className="text-sm font-bold mb-3">Signature</div>
@@ -194,7 +194,7 @@ export default function Template3Minimal({ data, type, includeSignature = false 
   
 
         {/* FOOTER collé en bas */}
-        <div className="mt-auto bg-[#0a1f44] text-white p-6 text-center text-sm">
+        <div className="mt-auto bg-[#0a1f44] text-white p-6 text-center text-sm" data-invoice-section="footer">
           <p>
             <strong>{user?.company.name}</strong> | {user?.company.address} | <strong>Tél :</strong>{' '}
             {user?.company.phone} | <strong>ICE :</strong> {user?.company.ice} | <strong>IF:</strong>{' '}

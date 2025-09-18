@@ -69,7 +69,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
       </div>
 
       {/* TABLE PRODUITS */}
-      <div className="p-8 border-b border-gray-300">
+      <div className="p-8 border-b border-gray-300" data-invoice-section="items">
         <div className="border border-gray-300 rounded overflow-hidden">
           <table
             className="w-full border-collapse"
@@ -104,7 +104,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
       </div>
 
       {/* TOTALS */}
-      <div className="p-8">
+      <div className="p-8" data-invoice-section="totals">
         <div className="flex justify-between">
           {/* Bloc gauche */}
           <div className="w-80 bg-gray-50 border border-gray-200 rounded p-2">
@@ -164,7 +164,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
       </div>
 
       {/* SIGNATURE */}
-      <div className="p-6">
+      <div className="p-6" data-invoice-section="signature">
         <div className="flex justify-start">
           <div className="w-60 bg-gray-50 border border-black rounded p-4 text-center">
             <div className="text-sm font-bold mb-3">Signature</div>
@@ -187,6 +187,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
       {/* FOOTER collé en bas */}
       <div
         className="bg-white text-black border-t border-gray-300 p-6 text-sm text-center mt-auto"
+        data-invoice-section="footer"
       >
         <p>
           <strong>{user?.company.name}</strong> | {user?.company.address} | <strong>Tél :</strong> {user?.company.phone} | <strong>ICE :</strong> {user?.company.ice} | <strong>IF:</strong> {user?.company.if} | <strong>RC:</strong> {user?.company.rc} | <strong>CNSS:</strong> {user?.company.cnss} | <strong>Patente :</strong> {user?.company.patente} | <strong>EMAIL :</strong> {user?.company.email} | <strong>SITE WEB :</strong> {user?.company.website}
