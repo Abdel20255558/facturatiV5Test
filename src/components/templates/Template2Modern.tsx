@@ -3,13 +3,12 @@ import { Invoice, Quote } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
- * Pagination par lot d’items :
- * - Toutes les pages intermédiaires : ITEMS_PER_PAGE
- * - Dernière page : ITEMS_PER_PAGE_LAST pour laisser la place aux totaux
- * - La signature est rendue sur une page dédiée si includeSignature === true
+ * Pagination : ajuste si besoin selon la hauteur réelle de ta zone .pdf-content.
+ * - Les pages "intermédiaires" affichent jusqu'à ITEMS_PER_PAGE lignes.
+ * - La dernière page réserve de la place pour les totaux.
  */
-const ITEMS_PER_PAGE = 12;
-const ITEMS_PER_PAGE_LAST = 8;
+const ITEMS_PER_PAGE = 12;      // nb de lignes pour chaque page "pleine"
+const ITEMS_PER_PAGE_LAST = 8;  // nb de lignes sur la dernière page (laisse la place aux totaux)
 
 interface TemplateProps {
   data: Invoice | Quote;
@@ -26,18 +25,34 @@ type Item = {
   vatRate?: number;
 };
 
+// --------- helpers ---------
 function chunk<T>(arr: T[], size: number) {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 }
 
-function Header({ companyName, logoUrl, title }: { companyName: string; logoUrl?: string; title: string }) {
+const money = (n?: number) => `${(n ?? 0).toFixed(2)} MAD`;
+
+// --------- sous-composants ---------
+function Header({
+  companyName,
+  logoUrl,
+  title,
+}: {
+  companyName: string;
+  logoUrl?: string;
+  title: string;
+}) {
   return (
     <div className="pdf-header">
-      <div className="p-8 border-b border-black bg-black text-white">
-        <div className="flex items-center justify-between">
-          {logoUrl ? <img src={logoUrl} alt="Logo" className="h-20 w-auto" /> : <div className="h-20 w-20" />}
+      <div className="p-8 border-b border-black bg-black text-white h-full flex items-center">
+        <div className="flex items-center justify-between w-full">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-20 w-auto object-contain" />
+          ) : (
+            <div className="h-20 w-20" />
+          )}
           <div className="flex-1 text-center">
             <h2 className="text-3xl font-extrabold">{companyName}</h2>
             <h1 className="text-xl font-bold mt-1">{title}</h1>
@@ -52,8 +67,8 @@ function Header({ companyName, logoUrl, title }: { companyName: string; logoUrl?
 function Footer({ footerText }: { footerText: string }) {
   return (
     <div className="pdf-footer">
-      <div className="bg-black text-white p-4 text-xs text-center border-t-2 border-white">
-        <p>{footerText}</p>
+      <div className="bg-black text-white p-4 text-xs text-center border-t-2 border-white h-full flex items-center justify-center">
+        <p className="px-2">{footerText}</p>
       </div>
     </div>
   );
@@ -124,9 +139,9 @@ function ItemsTable({ items }: { items: Item[] }) {
                   {(item.quantity ?? 0).toFixed(3)} {item.unit || 'unité'}
                 </td>
                 <td className="border-r border-black px-3 py-2 text-center text-sm">
-                  {(item.unitPrice ?? 0).toFixed(2)} MAD
+                  {money(item.unitPrice)}
                 </td>
-                <td className="px-3 py-2 text-center text-sm font-medium">{total.toFixed(2)} MAD</td>
+                <td className="px-3 py-2 text-center text-sm font-medium">{money(total)}</td>
               </tr>
             );
           })}
@@ -136,6 +151,7 @@ function ItemsTable({ items }: { items: Item[] }) {
   );
 }
 
+// --------- composant principal ---------
 export default function Template2Modern({ data, type, includeSignature = false }: TemplateProps) {
   const { user } = useAuth();
   const title = type === 'invoice' ? 'FACTURE' : 'DEVIS';
@@ -152,28 +168,27 @@ export default function Template2Modern({ data, type, includeSignature = false }
     user?.company?.cnss ? `CNSS : ${user.company.cnss}` : '',
     user?.company?.patente ? `Patente : ${user.company.patente}` : '',
     user?.company?.email ? `EMAIL : ${user.company.email}` : '',
-    user?.company?.website ? `SITE WEB : ${user.company.website}` : '',
+    user?.company?.website ? `SITE WEB : ${user?.company?.website}` : '',
   ]
     .filter(Boolean)
     .join(' | ');
 
-  // Prépare la pagination des items
+  // Pagination des items en pages .pdf-page
   const pages = useMemo(() => {
     const items = (data.items as Item[]) || [];
     if (items.length === 0) return [[]] as Item[][];
 
     if (items.length <= ITEMS_PER_PAGE_LAST) {
-      // Tout tient sur une seule page avec les totaux
+      // tout sur une seule page avec totaux
       return [items];
     }
-
-    // On réserve la dernière page avec moins de lignes pour les totaux
+    // réserver la dernière page (place pour totaux)
     const headCount = items.length - ITEMS_PER_PAGE_LAST;
     const middle = chunk(items.slice(0, headCount), ITEMS_PER_PAGE);
     return [...middle, items.slice(headCount)];
   }, [data.items]);
 
-  // Calcul TVA groupée
+  // TVA groupée pour le bloc totaux de la dernière page
   const vatGroups = useMemo(() => {
     const acc: Record<number, { amount: number; products: string[] }> = {};
     (data.items as Item[]).forEach((item) => {
@@ -190,7 +205,7 @@ export default function Template2Modern({ data, type, includeSignature = false }
 
   return (
     <div className="w-full">
-      {/* ==== Pour chaque page d’items ==== */}
+      {/* Pages items */}
       {pages.map((items, pageIndex) => {
         const isLast = pageIndex === pages.length - 1;
         return (
@@ -201,31 +216,31 @@ export default function Template2Modern({ data, type, includeSignature = false }
             >
               <Header companyName={companyName} logoUrl={logoUrl} title={title} />
               <div className="pdf-content">
-                {/* Infos haut */}
+                {/* Boîtes client/date */}
                 <ClientBoxes client={data.client} date={data.date} number={data.number} type={type} />
 
-                {/* Tableau (partie paginée) */}
+                {/* Tableau (page courante) */}
                 <ItemsTable items={items} />
 
-                {/* Totaux uniquement sur la dernière page */}
+                {/* Totaux seulement sur la dernière page */}
                 {isLast && (
                   <div className="mb-6 pdf-avoid-break">
                     <div className="flex justify-between gap-6">
-                      {/* Bloc gauche */}
+                      {/* Bloc gauche : montant en lettres */}
                       <div className="w-1/2 bg-gray-50 border border-black rounded p-3">
-                        <div className="text-sm font-bold border-black pb-2 text-center">
+                        <div className="text-sm font-bold pb-2 text-center border-b border-black">
                           Arrêtée le présent {type === 'invoice' ? 'facture' : 'devis'} à la somme de :
                         </div>
-                        <div className="text-sm border-t border-black pt-2">
+                        <div className="text-sm pt-2">
                           <p className="text-black">• {data.totalInWords || ''}</p>
                         </div>
                       </div>
 
-                      {/* Bloc droit */}
+                      {/* Bloc droit : totaux */}
                       <div className="w-1/2 bg-gray-50 border border-black rounded p-4">
                         <div className="flex justify-between text-sm mb-2">
                           <span>Total HT :</span>
-                          <span className="font-medium">{(data.subtotal ?? 0).toFixed(2)} MAD</span>
+                          <span className="font-medium">{money(data.subtotal)}</span>
                         </div>
 
                         <div className="text-sm mb-2">
@@ -239,14 +254,14 @@ export default function Template2Modern({ data, type, includeSignature = false }
                                   </span>
                                 )}
                               </span>
-                              <span className="font-medium">{vatGroups[+r].amount.toFixed(2)} MAD</span>
+                              <span className="font-medium">{money(vatGroups[+r].amount)}</span>
                             </div>
                           ))}
                         </div>
 
                         <div className="flex justify-between text-sm font-bold border-t border-black pt-2">
                           <span>TOTAL TTC :</span>
-                          <span>{(data.totalTTC ?? 0).toFixed(2)} MAD</span>
+                          <span>{money(data.totalTTC)}</span>
                         </div>
                       </div>
                     </div>
@@ -255,44 +270,38 @@ export default function Template2Modern({ data, type, includeSignature = false }
               </div>
               <Footer footerText={footerText} />
             </div>
-
-            {/* On force un saut de page visuel entre nos conteneurs */}
-            {pageIndex < pages.length - 1 && <div className="html2pdf__page-break" />}
           </Fragment>
         );
       })}
 
-      {/* Page signature dédiée (elle a aussi header + footer) */}
+      {/* Page signature dédiée (optionnelle) */}
       {includeSignature && (
-        <>
-          <div className="html2pdf__page-break" />
-          <div
-            className="pdf-page bg-white mx-auto border border-black flex flex-col relative"
-            style={{ fontFamily: 'Arial, sans-serif' }}
-          >
-            <Header companyName={companyName} logoUrl={logoUrl} title={title} />
-            <div className="pdf-content">
-              <div className="w-60 bg-gray-50 border border-black rounded p-4 text-center">
-                <div className="text-sm font-bold mb-3">Signature</div>
-                <div className="border-2 border-black rounded-sm h-24 flex items-center justify-center relative">
-                  {user?.company?.signature ? (
-                    <img
-                      src={user.company.signature}
-                      alt="Signature"
-                      className="max-h-20 max-w-full object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <span className="text-gray-400 text-sm">&nbsp;</span>
-                  )}
-                </div>
+        <div
+          className="pdf-page bg-white mx-auto border border-black flex flex-col relative"
+          style={{ fontFamily: 'Arial, sans-serif' }}
+        >
+          <Header companyName={companyName} logoUrl={logoUrl} title={title} />
+          <div className="pdf-content">
+            <div className="w-60 bg-gray-50 border border-black rounded p-4 text-center">
+              <div className="text-sm font-bold mb-3">Signature</div>
+              <div className="border-2 border-black rounded-sm h-24 flex items-center justify-center relative">
+                {user?.company?.signature ? (
+                  <img
+                    src={user.company.signature}
+                    alt="Signature"
+                    className="max-h-20 max-w-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <span className="text-gray-400 text-sm">&nbsp;</span>
+                )}
               </div>
             </div>
-            <Footer footerText={footerText} />
           </div>
-        </>
+          <Footer footerText={footerText} />
+        </div>
       )}
     </div>
   );
